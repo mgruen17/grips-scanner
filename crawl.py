@@ -22,12 +22,12 @@ files=dict(anchor='', logintoken=token, realm='hs', username=username, password=
 data={'anchor':'', 'logintoken':token, 'realm':'hs', 'username':username, 'password':password}
 page_login_post = session.post(URL_login_post, data=data)
 soup = BeautifulSoup(page_login_post.text,'html.parser')
-print(f'logged in as {soup.findAll("span","usertext")[0].text}\n\n')
+print(f'logged in as {soup.select("span.usertext")[0].text}\n\n')
 
 URL_dashboard_get = 'https://elearning.uni-regensburg.de/my'
 page_dashboard_get = session.get(URL_dashboard_get)
 soup = BeautifulSoup(page_dashboard_get.text,'html.parser')
-courses = soup.findAll('li','qa-course')
+courses = soup.select('li.qa-course')
 course_i = 0
 for course in courses:
     print(f'[{course_i}] {course.text}')
