@@ -8,6 +8,7 @@ if len(sys.argv) > 1:
     username = sys.argv[1]
     password = sys.argv[2]
 else:
+    print('You can specify username and password as arguments as well.')
     username=input('enter username:')
     password=input('enter password:')
 
@@ -40,6 +41,6 @@ URL_course_get = course_chosen.contents[0]['href']
 print(URL_course_get)
 page_dashboard_get = session.get(URL_course_get)
 soup = BeautifulSoup(page_dashboard_get.text,'html.parser')
-activities = soup.findAll('li', 'activity')
-for activity in activities:
-    print(activity['id'])
+resources = soup.select('li.activity.resource a')
+for resource in resources:
+    print(resource['href'])
