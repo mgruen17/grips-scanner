@@ -92,20 +92,36 @@ soup = BeautifulSoup(page_course_get.text,'html.parser')
 # for resource in resources:
 #     download_file(resource['href'], path)
 
-# vimp links
-all_urls = soup.select('li.activity.url a')
-for url in all_urls:
-    url.span.span.decompose()
-    print(url.text)
-    url_result = session.get(url['href'])
-    url_soup = BeautifulSoup(url_result.text,'html.parser')
-    final_url = url_soup.select('.urlworkaround a')[0]['href']
+# URLs
+# all_urls = soup.select('li.activity.url a')
 
-    # TODO: write to text file
-    print(final_url)
+# for url in all_urls:
+#     url.span.span.decompose()
+#     print(url.text)
+#     url_result = session.get(url['href'])
+#     url_soup = BeautifulSoup(url_result.text,'html.parser')
+#     final_url = url_soup.select('.urlworkaround a')[0]['href']
 
-    if final_url.startswith('https://vimp.oth-regensburg.de/'):
-        final_url_result = session.get(final_url)
-        final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
-        download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
-        download_file(download_url, path, url.text.strip() + '.' + download_url.split('.')[-1])
+#     with open(path + '/URLs.txt', 'a') as url_txt_file:
+#         url_txt_file.write(url.text + '\n' + final_url + '\n\n')
+
+#     if final_url.startswith('https://vimp.oth-regensburg.de/'):
+#         final_url_result = session.get(final_url)
+#         final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
+#         download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
+#         download_file(download_url, path, url.text.strip() + '.' + download_url.split('.')[-1])
+
+# grips pages
+# VIDEOS ONLY
+# TODO: save content as HTML and find and download media referenced in content
+all_pages = soup.select('li.activity.page a')
+for page in all_pages:
+    page.span.span.decompose()
+    page_result = session.get(page['href'])
+    page_soup = BeautifulSoup(page_result.text, 'html.parser')
+    key = page_soup.select('iframe')[0]['src'].split('key=')[-1].split('&')[0]
+    download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
+    download_file(download_url, path, page.text)
+
+# TODO: download folders
+# TODO: download user-submitted files
