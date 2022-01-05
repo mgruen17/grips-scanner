@@ -129,5 +129,12 @@ for activity in activities:
         download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
         download_file(download_url, path, a_element.text)
 
-# TODO: download folders
+    # grips file folders
+    elif 'folder' in activity['class']:
+        print('folder')
+        continue
+        folder_id = a_element['href'].split('id=')[-1].split('&')[0]
+        download_url = f'https://elearning.uni-regensburg.de/mod/folder/download_folder.php?id={folder_id}'
+        download_file(download_url, path, a_element.text)
+
 # TODO: download user-submitted files
