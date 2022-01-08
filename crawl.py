@@ -33,6 +33,7 @@ def download_file(link, path, filename = None):
 if len(sys.argv) > 1:
     username = sys.argv[1]
     password = sys.argv[2]
+    path = sys.argv[3]
 else:
     print('You can specify username and password as arguments as well.')
     username=input('enter username:')
@@ -80,7 +81,7 @@ timestamp = str(int(time()))
 course_directory = course_chosen.text.strip()
 for char in invalid:
 	course_directory = course_directory.replace(char, '_')
-path = 'Downloads/' + timestamp + '/' + course_directory
+path = path + 'Downloads/' + timestamp + '/' + course_directory
 os.makedirs(path,mode = 0o777, exist_ok=True)
 
 URL_course_get = course_chosen.contents[0]['href']
@@ -89,52 +90,61 @@ soup = BeautifulSoup(page_course_get.text,'html.parser')
 
 activities = soup.select('li.activity')
 for activity in activities:
-    a_element = activity.select('a')[0]
-    if a_element.span.span is not None:
-        a_element.span.span.decompose()
-    print(a_element.text)
+    try:
+        if any(x in activity['class'] for x in ['forum', 'label', 'assign', 'feedback']):
+            continue
+        a_element = activity.select('a')[0]
+        if a_element.span.span is not None:
+            a_element.span.span.decompose()
+        print(a_element.text)
 
-    # directly linked files
-    if 'resource' in activity['class']:
-        print('resource')
-        continue
-        download_file(a_element['href'], path)
+        # directly linked files
+        if 'resource' in activity['class']:
+            print('resource')
+            # continue
+            download_file(a_element['href'], path)
 
-    # URLs
-    elif 'url' in activity['class']:
-        print('url')
-        continue
-        url_result = session.get(a_element['href'])
-        url_soup = BeautifulSoup(url_result.text,'html.parser')
-        final_url = url_soup.select('.urlworkaround a')[0]['href']
+        # URLs
+        elif 'url' in activity['class']:
+            print('url')
+            # continue
+            url_result = session.get(a_element['href'])
+            url_soup = BeautifulSoup(url_result.text,'html.parser')
+            final_url = url_soup.select('.urlworkaround a')[0]['href']
 
-        with open(path + '/URLs.txt', 'a') as url_txt_file:
-            url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
+            with open(path + '/URLs.txt', 'a') as url_txt_file:
+                url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
 
-        if final_url.startswith('https://vimp.oth-regensburg.de/'):
-            final_url_result = session.get(final_url)
-            final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
-            download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
-            download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1])
+            if final_url.startswith('https://vimp.oth-regensburg.de/'):
+                final_url_result = session.get(final_url)
+                final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
+                download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
+                download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1])
 
-    # grips pages
-    # VIDEOS ONLY
-    # TODO: save content as HTML and find and download media referenced in content
-    elif 'page' in activity['class']:
-        print('page')
-        continue
-        page_result = session.get(a_element['href'])
-        page_soup = BeautifulSoup(page_result.text, 'html.parser')
-        key = page_soup.select('iframe')[0]['src'].split('key=')[-1].split('&')[0]
-        download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
-        download_file(download_url, path, a_element.text)
+        # grips pages
+        # VIDEOS ONLY
+        # TODO: save content as HTML and find and download media referenced in content
+        elif 'page' in activity['class']:
+            print('page')
+            # continue
+            page_result = session.get(a_element['href'])
+            page_soup = BeautifulSoup(page_result.text, 'html.parser')
+            iframes = page_soup.select('iframe')
+            if iframes.length == 0:
+                print('no video found -> skipping...')
+                continue
+            key = iframes[0]['src'].split('key=')[-1].split('&')[0]
+            download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
+            download_file(download_url, path, a_element.text)
 
-    # grips file folders
-    elif 'folder' in activity['class']:
-        print('folder')
-        continue
-        folder_id = a_element['href'].split('id=')[-1].split('&')[0]
-        download_url = f'https://elearning.uni-regensburg.de/mod/folder/download_folder.php?id={folder_id}'
-        download_file(download_url, path, a_element.text)
+        # grips file folders
+        elif 'folder' in activity['class']:
+            print('folder')
+            # continue
+            folder_id = a_element['href'].split('id=')[-1].split('&')[0]
+            download_url = f'https://elearning.uni-regensburg.de/mod/folder/download_folder.php?id={folder_id}'
+            download_file(download_url, path, a_element.text)
+    except:
+        print('error; processing next item...')
 
 # TODO: download user-submitted files
