@@ -23,7 +23,7 @@ def download_file(link, path, filename = None):
     
     fullpath = path + '/' + filename.strip()
 
-    if path.exists(fullpath):
+    if os.path.exists(fullpath):
         print('file exists. skipping...')
         return
 
@@ -39,10 +39,13 @@ def download_file(link, path, filename = None):
     print('complete')
 
 # logins
-def login():
+def gripsLogin():
     URL_grips_login_get = 'https://elearning.uni-regensburg.de/login/index.php'
     page_grips_login_get = session.get(URL_grips_login_get)
     soup = BeautifulSoup(page_grips_login_get.text,'html.parser')
+    if 'Sie sind angemeldet' in soup.text:
+        print('GRIPS: already logged in')
+        return
     token = soup.find_all(attrs={'name':'logintoken'})[0]['value']
 
     URL_grips_login_post = 'https://elearning.uni-regensburg.de/login/index.php'
@@ -51,9 +54,14 @@ def login():
     soup = BeautifulSoup(page_grips_login_post.text,'html.parser')
     print(f'\nGRIPS: logged in as {soup.select("span.usertext")[0].text}')
 
+def vimpLogin():
     URL_vimp_login_get = 'https://vimp.oth-regensburg.de/login'
     page_vimp_login_get = session.get(URL_vimp_login_get)
     soup = BeautifulSoup(page_vimp_login_get.text,'html.parser')
+    profileLink = soup.select(".linkToProfile a")
+    if len(profileLink) > 0 and username == profileLink[0].text:
+        print('VIMP: already logged in')
+        return
     token = soup.find_all(attrs={'name':'signin[_csrf_token]'})[0]['value']
 
     URL_vimp_login_post = 'https://vimp.oth-regensburg.de/login'
@@ -62,6 +70,10 @@ def login():
     soup = BeautifulSoup(page_vimp_login_post.text,'html.parser')
     print(f'VIMP: logged in as {soup.select(".linkToProfile a")[0].text}\n\n')
 
+def login():
+    gripsLogin()
+    vimpLogin()
+    
 # process activity
 def processActivity(activity):
     if any(x in activity['class'] for x in ['forum', 'label', 'assign', 'feedback']):
@@ -85,7 +97,7 @@ def processActivity(activity):
         url_soup = BeautifulSoup(url_result.text,'html.parser')
         final_url = url_soup.select('.urlworkaround a')[0]['href']
 
-        with open(path + '/URLs.txt', 'a') as url_txt_file:
+        with open(path + f'/URLs_{timestamp}.txt', 'a') as url_txt_file:
             url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
 
         if final_url.startswith('https://vimp.oth-regensburg.de/'):
@@ -164,13 +176,13 @@ for activity in activities:
         retry = False
         try:
             processActivity(activity)
-        except:
+        except Exception as e:
             retry = True
             retry_count = retry_count + 1
             if retry_count > max_retry_count:
-                print('error; processing next item...')
+                print(f'error:{repr(e)}\nprocessing next item...')
             else:
-                print('error; retrying...')
+                print(f'error:{repr(e)}\nretrying...')
                 login()
 
 # TODO: download user-submitted files
