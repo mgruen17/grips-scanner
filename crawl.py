@@ -115,7 +115,7 @@ def processActivity(activity):
         page_result = session.get(a_element['href'])
         page_soup = BeautifulSoup(page_result.text, 'html.parser')
         iframes = page_soup.select('iframe')
-        if iframes.length == 0:
+        if len(iframes) == 0:
             print('no video found -> skipping...')
             return
         key = iframes[0]['src'].split('key=')[-1].split('&')[0]
@@ -180,7 +180,7 @@ for activity in activities:
             retry = True
             retry_count = retry_count + 1
             if retry_count > max_retry_count:
-                print(f'error:{repr(e)}\nprocessing next item...')
+                print(f'error:{repr(e)}\nprocessing next item...0')
             else:
                 print(f'error:{repr(e)}\nretrying...')
                 login()
