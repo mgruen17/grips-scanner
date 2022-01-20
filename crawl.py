@@ -4,6 +4,7 @@ from tqdm import tqdm
 from time import time
 import os
 from bs4 import BeautifulSoup
+from urllib.parse import unquote
 
 session = requests.Session()
 invalid = '<>:"/\|?*'
@@ -16,7 +17,7 @@ def download_file(link, path, filename = None):
     URL_resource_get = link
     resource_result = session.get(URL_resource_get, stream=True)
     if filename == None:
-        filename = resource_result.url.split('/')[-1].split('?')[0]
+        filename = unquote(resource_result.url.split('/')[-1].split('?')[0])
 
     for char in invalid:
         filename = filename.replace(char, '_')
@@ -120,7 +121,7 @@ def processActivity(activity):
             return
         key = iframes[0]['src'].split('key=')[-1].split('&')[0]
         download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
-        download_file(download_url, path, a_element.text)
+        download_file(download_url, path, a_element.text + '.mp4')
 
     # grips file folders
     elif 'folder' in activity['class']:
@@ -128,7 +129,7 @@ def processActivity(activity):
         # return
         folder_id = a_element['href'].split('id=')[-1].split('&')[0]
         download_url = f'https://elearning.uni-regensburg.de/mod/folder/download_folder.php?id={folder_id}'
-        download_file(download_url, path, a_element.text)
+        download_file(download_url, path, a_element.text + '.zip')
 
 # read arguments
 if len(sys.argv) > 1:
