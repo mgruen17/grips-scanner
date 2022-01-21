@@ -103,7 +103,7 @@ def processActivity(activity, path, activity_count):
         url_soup = BeautifulSoup(url_result.text,'html.parser')
         final_url = url_soup.select('.urlworkaround a')[0]['href']
 
-        with open(path + f'/URLs_{timestamp}.txt', 'a') as url_txt_file:
+        with open(path + f'URLs_{timestamp}.txt', 'a') as url_txt_file:
             url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
 
         if final_url.startswith('https://vimp.oth-regensburg.de/'):
