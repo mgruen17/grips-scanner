@@ -81,7 +81,8 @@ def login():
     vimpLogin()
     
 # process activity
-def processActivity(activity, path, activity_count):
+def processActivity(activity, path, activity_count):    
+    os.makedirs(path,mode = 0o777, exist_ok=True)
     if any(x in activity['class'] for x in ['forum', 'label', 'assign', 'feedback']):
         return
     a_element = activity.select('a')[0]
@@ -180,7 +181,6 @@ course_directory = course_chosen.text.strip()
 for char in invalid:
 	course_directory = course_directory.replace(char, '_')
 path = f'{path}GRIPS_Courses/{course_directory}/'
-os.makedirs(path,mode = 0o777, exist_ok=True)
 
 URL_course_get = course_chosen.contents[0]['href']
 page_course_get = session.get(URL_course_get)
