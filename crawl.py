@@ -7,11 +7,16 @@ from bs4 import BeautifulSoup
 from urllib.parse import unquote
 
 session = requests.Session()
-invalid = '<>:"/\|?*'
 username = ''
 password = ''
 path = ''
 debug = False
+
+def sanitizePathPart(input):   
+    invalid = '<>:"/\|?*' 
+    for char in invalid:
+        input = input.replace(char, '_')
+    return input
 
 # download
 def download_file(link, path, filename = None, prefix = None):
@@ -19,9 +24,8 @@ def download_file(link, path, filename = None, prefix = None):
     resource_result = session.get(URL_resource_get, stream=True)
     if filename == None:
         filename = unquote(resource_result.url.split('/')[-1].split('?')[0])
-
-    for char in invalid:
-        filename = filename.replace(char, '_')
+        
+    filename = sanitizePathPart(filename)
 
     if not prefix == None:
         filename = prefix + filename
@@ -178,9 +182,7 @@ print(f'\ncrawling {course_chosen.text}')
 
 timestamp = str(int(time()))
 course_directory = course_chosen.text.strip()
-for char in invalid:
-	course_directory = course_directory.replace(char, '_')
-path = f'{path}GRIPS_Courses/{course_directory}/'
+path = f'{path}GRIPS_Courses/{sanitizePathPart(course_directory)}/'
 
 URL_course_get = course_chosen.contents[0]['href']
 page_course_get = session.get(URL_course_get)
@@ -199,7 +201,7 @@ for section in sections:
         while retry and retry_count <= max_retry_count:
             retry = False
             try:
-                processActivity(activity, f'{path}{section_count:03n}_{section_name}/', activity_count)
+                processActivity(activity, f'{path}{section_count:03n}_{sanitizePathPart(section_name)}/', activity_count)
             except Exception as e:
                 retry = True
                 retry_count = retry_count + 1
