@@ -90,10 +90,13 @@ def login():
 # process activity
 def processActivity(activity, path, activity_count):    
     os.makedirs(path,mode = 0o777, exist_ok=True)
-    if any(x in activity['class'] for x in ['forum', 'label', 'assign', 'feedback']):
+    if any(x in activity['class'] for x in ['forum', 'assign', 'feedback']):
         return
-    a_element = activity.select('a')[0]
-    if a_element.span.span is not None:
+    a_elements = activity.select('a')
+    if len(a_elements) == 0:
+        return
+    a_element = a_elements[0]
+    if a_element.span is not None and a_element.span.span is not None:
         a_element.span.span.decompose()
     print(a_element.text)
 
@@ -110,6 +113,21 @@ def processActivity(activity, path, activity_count):
         url_result = session.get(a_element['href'])
         url_soup = BeautifulSoup(url_result.text,'html.parser')
         final_url = url_soup.select('.urlworkaround a')[0]['href']
+
+        with open(path + f'URLs_{timestamp}.txt', 'a') as url_txt_file:
+            url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
+
+        if final_url.startswith('https://vimp.oth-regensburg.de/'):
+            final_url_result = session.get(final_url)
+            final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
+            download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
+            download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1], prefix=f'{activity_count:03n}_')
+
+    # URLs marked as labels because why not...
+    elif 'label' in activity['class']:
+        print('url as label')
+        # return
+        final_url = a_element['href']
 
         with open(path + f'URLs_{timestamp}.txt', 'a') as url_txt_file:
             url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
