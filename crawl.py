@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import unquote
 
 session = requests.Session()
+session_nologin = requests.Session()
 invalid = '<>:"/\|?*'
 username = ''
 password = ''
@@ -16,6 +17,8 @@ path = ''
 def download_file(link, path, filename = None):
     URL_resource_get = link
     resource_result = session.get(URL_resource_get, stream=True)
+    if resource_result.status_code == 404:
+        resource_result = session_nologin.get(URL_resource_get, stream=True)
     if filename == None:
         filename = unquote(resource_result.url.split('/')[-1].split('?')[0])
 
