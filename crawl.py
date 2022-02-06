@@ -8,24 +8,32 @@ from urllib.parse import unquote
 
 session = requests.Session()
 session_nologin = requests.Session()
-invalid = '<>:"/\|?*'
 username = ''
 password = ''
 path = ''
+debug = False
+
+def sanitizePathPart(input):   
+    invalid = '<>:"/\|?*' 
+    for char in invalid:
+        input = input.replace(char, '_')
+    return input
 
 # download
-def download_file(link, path, filename = None):
+def download_file(link, path, filename = None, prefix = None):
     URL_resource_get = link
     resource_result = session.get(URL_resource_get, stream=True)
     if resource_result.status_code == 404:
         resource_result = session_nologin.get(URL_resource_get, stream=True)
     if filename == None:
         filename = unquote(resource_result.url.split('/')[-1].split('?')[0])
+        
+    filename = sanitizePathPart(filename)
 
-    for char in invalid:
-        filename = filename.replace(char, '_')
+    if not prefix == None:
+        filename = prefix + filename
     
-    fullpath = path + '/' + filename.strip()
+    fullpath = path + filename.strip()
 
     if os.path.exists(fullpath):
         print('file exists. skipping...')
@@ -37,9 +45,10 @@ def download_file(link, path, filename = None):
     else:
         total_size = int(resource_result.headers['content-length'])
     chunk_size = 1024
-    with open(fullpath, "wb") as file:
-        for data in tqdm(iterable=resource_result.iter_content(chunk_size=chunk_size), total = total_size/chunk_size, unit='KB'):
-            file.write(data)
+    if not debug:
+        with open(fullpath, "wb") as file:
+            for data in tqdm(iterable=resource_result.iter_content(chunk_size=chunk_size), total = total_size/chunk_size, unit='KB'):
+                file.write(data)
     print('complete')
 
 # logins
@@ -79,7 +88,8 @@ def login():
     vimpLogin()
     
 # process activity
-def processActivity(activity):
+def processActivity(activity, path, activity_count):    
+    os.makedirs(path,mode = 0o777, exist_ok=True)
     if any(x in activity['class'] for x in ['forum', 'label', 'assign', 'feedback']):
         return
     a_element = activity.select('a')[0]
@@ -91,7 +101,7 @@ def processActivity(activity):
     if 'resource' in activity['class']:
         print('resource')
         # return
-        download_file(a_element['href'], path)
+        download_file(a_element['href'], path, prefix=f'{activity_count:03n}_')
 
     # URLs
     elif 'url' in activity['class']:
@@ -101,14 +111,14 @@ def processActivity(activity):
         url_soup = BeautifulSoup(url_result.text,'html.parser')
         final_url = url_soup.select('.urlworkaround a')[0]['href']
 
-        with open(path + f'/URLs_{timestamp}.txt', 'a') as url_txt_file:
+        with open(path + f'URLs_{timestamp}.txt', 'a') as url_txt_file:
             url_txt_file.write(a_element.text + '\n' + final_url + '\n\n')
 
         if final_url.startswith('https://vimp.oth-regensburg.de/'):
             final_url_result = session.get(final_url)
             final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
             download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
-            download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1])
+            download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1], prefix=f'{activity_count:03n}_')
 
     # grips pages
     # VIDEOS ONLY
@@ -122,9 +132,17 @@ def processActivity(activity):
         if len(iframes) == 0:
             print('no video found -> skipping...')
             return
-        key = iframes[0]['src'].split('key=')[-1].split('&')[0]
-        download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
-        download_file(download_url, path, a_element.text + '.mp4')
+        elif len(iframes) == 1:
+            key = iframes[0]['src'].split('key=')[-1].split('&')[0]
+            download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
+            download_file(download_url, path, a_element.text + '.mp4', prefix=f'{activity_count:03n}_')
+        elif len(iframes) > 1:
+            iframe_count = 0
+            for iframe in iframes:
+                key = iframe['src'].split('key=')[-1].split('&')[0]
+                download_url = f'https://vimp.oth-regensburg.de/getMedium/{key}.mp4'
+                download_file(download_url, path, a_element.text + f'_{iframe_count:03n}' + '.mp4', prefix=f'{activity_count:03n}_')
+                iframe_count = iframe_count + 1
 
     # grips file folders
     elif 'folder' in activity['class']:
@@ -132,17 +150,23 @@ def processActivity(activity):
         # return
         folder_id = a_element['href'].split('id=')[-1].split('&')[0]
         download_url = f'https://elearning.uni-regensburg.de/mod/folder/download_folder.php?id={folder_id}'
-        download_file(download_url, path, a_element.text + '.zip')
+        download_file(download_url, path, a_element.text + '.zip', prefix=f'{activity_count:03n}_')
 
 # read arguments
 if len(sys.argv) > 1:
     username = sys.argv[1]
     password = sys.argv[2]
     path = sys.argv[3]
+    if len(sys.argv) > 4:
+        debug = sys.argv[4] == 'debug'
 else:
     print('You can specify username and password as arguments as well.')
     username=input('enter username:')
     password=input('enter password:')
+    path=input('enter path:')
+
+if not path.endswith('/'):
+    path = path + '/'
 
 login()
 
@@ -161,32 +185,35 @@ print(f'\ncrawling {course_chosen.text}')
 
 timestamp = str(int(time()))
 course_directory = course_chosen.text.strip()
-for char in invalid:
-	course_directory = course_directory.replace(char, '_')
-# path = path + 'Downloads/' + timestamp + '/' + course_directory
-path = path + 'Downloads/' + course_directory
-os.makedirs(path,mode = 0o777, exist_ok=True)
+path = f'{path}GRIPS_Courses/{sanitizePathPart(course_directory)}/'
 
 URL_course_get = course_chosen.contents[0]['href']
 page_course_get = session.get(URL_course_get)
 soup = BeautifulSoup(page_course_get.text,'html.parser')
 
-activities = soup.select('li.activity')
-for activity in activities:
-    retry = True
-    retry_count = 0
-    max_retry_count = 1
-    while retry and retry_count <= max_retry_count:
-        retry = False
-        try:
-            processActivity(activity)
-        except Exception as e:
-            retry = True
-            retry_count = retry_count + 1
-            if retry_count > max_retry_count:
-                print(f'error:{repr(e)}\nprocessing next item...0')
-            else:
-                print(f'error:{repr(e)}\nretrying...')
-                login()
+sections = soup.select('li.section')
+section_count = 0
+for section in sections:
+    section_name = section.select('h3.sectionname span')[0].text
+    activities = section.select('li.activity')
+    activity_count = 0
+    for activity in activities:
+        retry = True
+        retry_count = 0
+        max_retry_count = 1
+        while retry and retry_count <= max_retry_count:
+            retry = False
+            try:
+                processActivity(activity, f'{path}{section_count:03n}_{sanitizePathPart(section_name)}/', activity_count)
+            except Exception as e:
+                retry = True
+                retry_count = retry_count + 1
+                if retry_count > max_retry_count:
+                    print(f'error:{repr(e)}\nprocessing next item...0')
+                else:
+                    print(f'error:{repr(e)}\nretrying...')
+                    login()
+        activity_count = activity_count + 1
+    section_count = section_count + 1
 
 # TODO: download user-submitted files
