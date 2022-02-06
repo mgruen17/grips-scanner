@@ -20,9 +20,13 @@ def sanitizePathPart(input):
     return input
 
 # download
-def download_file(link, path, filename = None, prefix = None):
+def download_file(link, path, filename = None, prefix = None, headers = None):
     URL_resource_get = link
-    resource_result = session.get(URL_resource_get, stream=True)
+    if headers is None:
+        resource_result = session.get(URL_resource_get, stream=True)
+    else:
+        resource_result = session.get(URL_resource_get, stream=True, headers=headers)
+
     if resource_result.status_code == 404:
         resource_result = session_nologin.get(URL_resource_get, stream=True)
     if filename == None:
@@ -122,6 +126,14 @@ def processActivity(activity, path, activity_count):
             final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
             download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
             download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1], prefix=f'{activity_count:03n}_')
+        
+        if final_url.startswith('https://oth-regensburg.zoom.us/'):
+            final_url_result = session.get(final_url)
+            final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
+            download_url = final_url_soup.select('video source[type="video/mp4"]')[0].attrs['src']
+            download_file(download_url, path, a_element.text.strip() + '.mp4', prefix=f'{activity_count:03n}_', headers={
+                "referer": "https://oth-regensburg.zoom.us/"
+            })
 
     # URLs marked as labels because why not...
     elif 'label' in activity['class']:
