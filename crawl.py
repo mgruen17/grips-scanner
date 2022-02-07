@@ -127,7 +127,7 @@ def processActivity(activity, path, activity_count):
             download_url = final_url_soup.select('meta[property="og:video:url"]')[0]['content']
             download_file(download_url, path, a_element.text.strip() + '.' + download_url.split('.')[-1], prefix=f'{activity_count:03n}_')
         
-        if final_url.startswith('https://oth-regensburg.zoom.us/'):
+        if final_url.startswith('https://oth-regensburg.zoom.us/rec'):
             final_url_result = session.get(final_url)
             final_url_soup = BeautifulSoup(final_url_result.text,'html.parser')
             download_url = final_url_soup.select('video source[type="video/mp4"]')[0].attrs['src']
